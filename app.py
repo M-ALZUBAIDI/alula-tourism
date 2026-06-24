@@ -208,53 +208,82 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.markdown("""
+# ─── Theme tokens ─────────────────────────────────────────────────────────────
+if st.session_state.get("theme", "dark") == "dark":
+    T = {
+        "app_bg": "#17120A", "sidebar_bg": "#100C06", "card_bg": "#251B0E",
+        "input_bg": "#251B0E", "receipt_bg": "#0E0A05", "pill_bg": "#2E2210",
+        "text": "#E8D5A0", "muted": "#C8A870", "gold": "#E8B84B", "gold_btn": "#C8922A",
+        "border": "#C8922A44", "btn_text": "#17120A", "info_bg": "#14243A",
+        "info_border": "#5A8AB8", "info_text": "#C0DCFF",
+    }
+else:
+    T = {
+        "app_bg": "#FBF7EE", "sidebar_bg": "#F3ECDC", "card_bg": "#FFFFFF",
+        "input_bg": "#FFFFFF", "receipt_bg": "#FFFDF8", "pill_bg": "#F3E9D2",
+        "text": "#3A2E16", "muted": "#7A6A45", "gold": "#A8741A", "gold_btn": "#C8922A",
+        "border": "#C8922A55", "btn_text": "#FFFFFF", "info_bg": "#E6F0FA",
+        "info_border": "#5A8AB8", "info_text": "#1A4A78",
+    }
+
+st.markdown(f"""
 <style>
-[data-testid="stAppViewContainer"] { background: #17120A; }
-[data-testid="stSidebar"] { background: #100C06 !important; border-right: 1px solid #C8922A44; }
-[data-testid="stSidebar"] * { color: #E8D5A0 !important; }
-.main .block-container { padding-top: 2.5rem; max-width: 800px; }
+[data-testid="stAppViewContainer"] {{ background: {T["app_bg"]}; }}
+[data-testid="stSidebar"] {{ background: {T["sidebar_bg"]} !important; border-right: 1px solid {T["border"]}; }}
+[data-testid="stSidebar"] * {{ color: {T["text"]} !important; }}
+.main .block-container {{ padding-top: 2.5rem; max-width: 800px; }}
 
-h1, h2, h3, h4 { color: #E8B84B !important; font-weight: 600 !important; }
-p, div, span, label { color: #E8D5A0 !important; }
+h1, h2, h3, h4 {{ color: {T["gold"]} !important; font-weight: 600 !important; }}
+p, div, span, label {{ color: {T["text"]} !important; }}
 
-input { background: #251B0E !important; color: #FFE8A0 !important; border: 1px solid #C8922A66 !important; border-radius: 8px !important; }
-.stTextInput label, .stNumberInput label, .stSelectbox label { color: #C8A870 !important; font-weight: 500 !important; font-size: 13px !important; }
+input {{ background: {T["input_bg"]} !important; color: {T["text"]} !important; border: 1px solid {T["border"]} !important; border-radius: 8px !important; }}
+.stTextInput label, .stNumberInput label, .stSelectbox label {{ color: {T["muted"]} !important; font-weight: 500 !important; font-size: 13px !important; }}
 
-.stButton > button { background: #C8922A !important; color: #17120A !important; border: none !important; border-radius: 8px !important; font-weight: 600 !important; font-size: 14px !important; padding: 0.5rem 1.3rem !important; }
-.stButton > button:hover { background: #E8B84B !important; }
+.stButton > button {{ background: {T["gold_btn"]} !important; color: {T["btn_text"]} !important; border: none !important; border-radius: 8px !important; font-weight: 600 !important; font-size: 14px !important; padding: 0.5rem 1.3rem !important; }}
+.stButton > button:hover {{ background: {T["gold"]} !important; }}
 
-.stSelectbox > div > div { background: #251B0E !important; color: #FFE8A0 !important; border: 1px solid #C8922A66 !important; }
-.stTabs [data-baseweb="tab"] { color: #C8A870 !important; }
-.stTabs [aria-selected="true"] { color: #E8B84B !important; border-bottom: 2px solid #E8B84B !important; }
+.stSelectbox > div > div {{ background: {T["input_bg"]} !important; color: {T["text"]} !important; border: 1px solid {T["border"]} !important; }}
+.stTabs [data-baseweb="tab"] {{ color: {T["muted"]} !important; }}
+.stTabs [aria-selected="true"] {{ color: {T["gold"]} !important; border-bottom: 2px solid {T["gold"]} !important; }}
 
-[data-testid="metric-container"] { background: #251B0E !important; border: 1px solid #C8922A44 !important; border-radius: 10px !important; padding: 1rem !important; }
-[data-testid="stMetricValue"] { color: #E8B84B !important; }
-[data-testid="stMetricLabel"] { color: #C8A870 !important; }
+[data-testid="metric-container"] {{ background: {T["card_bg"]} !important; border: 1px solid {T["border"]} !important; border-radius: 10px !important; padding: 1rem !important; }}
+[data-testid="stMetricValue"] {{ color: {T["gold"]} !important; }}
+[data-testid="stMetricLabel"] {{ color: {T["muted"]} !important; }}
 
-.stInfo > div { background: #14243A !important; border: 1px solid #5A8AB8 !important; color: #C0DCFF !important; border-radius: 8px !important; }
-hr { border-color: #C8922A33 !important; }
+.stInfo > div {{ background: {T["info_bg"]} !important; border: 1px solid {T["info_border"]} !important; color: {T["info_text"]} !important; border-radius: 8px !important; }}
+hr {{ border-color: {T["border"]} !important; }}
 
-.alula-card { background: #251B0E; border: 1px solid #C8922A44; border-radius: 12px; padding: 1.1rem 1.3rem; margin-bottom: 10px; }
-.alula-card h4 { color: #E8B84B !important; margin: 0 0 5px; font-size: 15px; }
-.alula-card p { color: #C8A870 !important; margin: 0; font-size: 13px; }
+.alula-card {{ background: {T["card_bg"]}; border: 1px solid {T["border"]}; border-radius: 12px; padding: 1.1rem 1.3rem; margin-bottom: 10px; }}
+.alula-card h4 {{ color: {T["gold"]} !important; margin: 0 0 5px; font-size: 15px; }}
+.alula-card p {{ color: {T["muted"]} !important; margin: 0; font-size: 13px; }}
 
-.role-card { background: #251B0E; border: 1px solid #C8922A44; border-radius: 14px; padding: 1.5rem 1rem; text-align: center; margin-bottom: 10px; }
-.role-card .role-icon { font-size: 34px; }
-.role-card h3 { color: #E8B84B !important; margin: 0.4rem 0 0.3rem; font-size: 18px; }
-.role-card p { color: #C8A870 !important; font-size: 12px; margin: 0; }
+.role-card {{ background: {T["card_bg"]}; border: 1px solid {T["border"]}; border-radius: 14px; padding: 1.5rem 1rem; text-align: center; margin-bottom: 10px; }}
+.role-card .role-icon {{ font-size: 34px; }}
+.role-card h3 {{ color: {T["gold"]} !important; margin: 0.4rem 0 0.3rem; font-size: 18px; }}
+.role-card p {{ color: {T["muted"]} !important; font-size: 12px; margin: 0; }}
 
-.receipt-box { background: #0E0A05; border: 1px solid #C8922A; border-radius: 12px; padding: 1rem 1.3rem; margin-bottom: 8px; }
-.receipt-row { display: flex; justify-content: space-between; padding: 5px 0; }
-.receipt-label { color: #9A8B72 !important; font-size: 13px; }
-.receipt-value { color: #E8D5A0 !important; font-size: 13px; font-weight: 500; }
-.receipt-id { color: #E8B84B !important; font-size: 18px !important; font-weight: 700 !important; }
+.receipt-box {{ background: {T["receipt_bg"]}; border: 1px solid {T["gold_btn"]}; border-radius: 12px; padding: 1rem 1.3rem; margin-bottom: 8px; }}
+.receipt-row {{ display: flex; justify-content: space-between; padding: 5px 0; }}
+.receipt-label {{ color: {T["muted"]} !important; font-size: 13px; }}
+.receipt-value {{ color: {T["text"]} !important; font-size: 13px; font-weight: 500; }}
+.receipt-id {{ color: {T["gold"]} !important; font-size: 18px !important; font-weight: 700 !important; }}
 
-.name-pill { display:inline-block; background:#2E2210; border:1px solid #C8922A44; color:#E8D5A0; padding:3px 10px; border-radius:14px; font-size:12px; margin:3px 4px 0 0; }
+.name-pill {{ display:inline-block; background:{T["pill_bg"]}; border:1px solid {T["border"]}; color:{T["text"]}; padding:3px 10px; border-radius:14px; font-size:12px; margin:3px 4px 0 0; }}
 </style>
 """, unsafe_allow_html=True)
 
 # ─── Session state ────────────────────────────────────────────────────────────
+# Bump this number whenever the Manager/Visitor/Guide data shape changes,
+# so a fresh Manager is rebuilt instead of reusing an old incompatible one.
+SCHEMA_VERSION = 2
+
+if st.session_state.get("schema_version") != SCHEMA_VERSION:
+    st.session_state.manager = Manager()
+    st.session_state.schema_version = SCHEMA_VERSION
+    st.session_state.role = None
+    st.session_state.logged_in_guide = None
+    st.session_state.logged_in_visitor = None
+
 if "manager" not in st.session_state:
     st.session_state.manager = Manager()
 if "role" not in st.session_state:
@@ -263,12 +292,29 @@ if "logged_in_guide" not in st.session_state:
     st.session_state.logged_in_guide = None
 if "logged_in_visitor" not in st.session_state:
     st.session_state.logged_in_visitor = None
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
+if "pending_toast" not in st.session_state:
+    st.session_state.pending_toast = None
 
 manager = st.session_state.manager
+
+# Show any toast queued from before the last rerun
+if st.session_state.pending_toast:
+    st.toast(st.session_state.pending_toast)
+    st.session_state.pending_toast = None
+
+def notify(msg):
+    """Queue a toast that survives the next st.rerun()."""
+    st.session_state.pending_toast = msg
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 🏛️ AlUla Tourism")
+    theme_label = "🌙 Dark mode" if st.session_state.theme == "light" else "☀️ Light mode"
+    if st.button(theme_label, use_container_width=True):
+        st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
+        st.rerun()
     st.markdown("---")
     if st.session_state.role is None:
         st.caption("Pick a role to begin")
@@ -376,7 +422,7 @@ elif st.session_state.role == "manager":
                     if gchoice != "None":
                         gid = int(gchoice.split("ID: ")[1].replace(")", ""))
                     manager.add_site(site_name, site_type, capacity, gid)
-                    st.toast(f"✅ Site '{site_name}' added!")
+                    notify(f"✅ Site '{site_name}' added!")
                     st.rerun()
         with tab3:
             c1, c2 = st.columns(2)
@@ -388,7 +434,7 @@ elif st.session_state.role == "manager":
                     if st.button("Assign"):
                         gid = int(aguide.split("ID: ")[1].replace(")", ""))
                         manager.assign_guide(asite, gid)
-                        st.toast(f"✅ Guide assigned to '{asite}'!")
+                        notify(f"✅ Guide assigned to '{asite}'!")
                         st.rerun()
                 else:
                     st.info("Need a site and a guide.")
@@ -400,12 +446,12 @@ elif st.session_state.role == "manager":
                     if cur and cur["status"] == "Open":
                         if st.button("🔴 Close site"):
                             manager.close_site(csite)
-                            st.toast(f"✅ '{csite}' closed.")
+                            notify(f"✅ '{csite}' closed.")
                             st.rerun()
                     elif cur:
                         if st.button("🟢 Reopen site"):
                             manager.reopen_site(csite)
-                            st.toast(f"✅ '{csite}' reopened.")
+                            notify(f"✅ '{csite}' reopened.")
                             st.rerun()
                 else:
                     st.info("No sites yet.")
@@ -427,7 +473,7 @@ elif st.session_state.role == "manager":
                     st.toast("❌ Enter a guide name.")
                 else:
                     nid = manager.add_new_Guide(gname)
-                    st.toast(f"✅ '{gname}' added — ID {nid}")
+                    notify(f"✅ '{gname}' added — ID {nid}")
                     st.rerun()
 
 # ─── Guide ────────────────────────────────────────────────────────────────────
@@ -447,7 +493,7 @@ elif st.session_state.role == "guide":
                 if found:
                     st.session_state.logged_in_guide = found
                     st.session_state.guide_page = "sites"
-                    st.toast(f"✅ Welcome, {found.name}!")
+                    notify(f"✅ Welcome, {found.name}!")
                     st.rerun()
                 else:
                     st.toast("❌ Guide ID not found.")
@@ -495,7 +541,7 @@ elif st.session_state.role == "visitor":
                     if v.login(u, p):
                         st.session_state.logged_in_visitor = v
                         st.session_state.visitor_page = "browse"
-                        st.toast(f"✅ Welcome back, {v.name}!")
+                        notify(f"✅ Welcome back, {v.name}!")
                         st.rerun()
                     else:
                         st.toast("❌ Incorrect password.")
@@ -534,7 +580,7 @@ elif st.session_state.role == "visitor":
                     if st.button("Register", key=f"reg_{site['name']}"):
                         ok, res = manager.register_visitor(visitor, site["name"])
                         if ok:
-                            st.toast(f"✅ Registered! Booking ID {res}")
+                            notify(f"✅ Registered! Booking ID {res}")
                             st.rerun()
                         else:
                             st.toast(f"❌ {res}")
@@ -552,7 +598,7 @@ elif st.session_state.role == "visitor":
                     if st.button("Cancel", key=f"c_{b['booking_id']}"):
                         ok, msg = manager.cancel_registration(visitor, b["booking_id"])
                         if ok:
-                            st.toast(f"✅ {msg}")
+                            notify(f"✅ {msg}")
                             st.rerun()
                         else:
                             st.toast(f"❌ {msg}")
