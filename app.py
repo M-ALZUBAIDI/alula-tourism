@@ -323,10 +323,20 @@ hr {{ border-color: {T["border"]} !important; }}
 # ─── Session state ────────────────────────────────────────────────────────────
 # Bump this number whenever the Manager/Visitor/Guide data shape changes,
 # so a fresh Manager is rebuilt instead of reusing an old incompatible one.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+
+def seed_example_data(m):
+    """Adds 4 example sites with 2 guides so the app isn't empty on first load."""
+    g1 = m.add_new_Guide("Ahmed")
+    g2 = m.add_new_Guide("Sara")
+    m.add_site("AlUla Old Town", "Historical", 50, g1)
+    m.add_site("Hegra", "Archaeological", 30, g2)
+    m.add_site("Dadan", "Historical", 20, g1)
+    m.add_site("Jabal Ikmah", "Rock Art", 15, None)
 
 if st.session_state.get("schema_version") != SCHEMA_VERSION:
     st.session_state.manager = Manager()
+    seed_example_data(st.session_state.manager)   # ← seed the 4 example sites
     st.session_state.schema_version = SCHEMA_VERSION
     st.session_state.role = None
     st.session_state.logged_in_guide = None
