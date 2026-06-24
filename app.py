@@ -10,7 +10,7 @@ class Guide:
     def __init__(s, name, guide_id):
         s.name = name
         s.guide_id = guide_id
-        s.assigned_sites = []  # list: one guide can have many sites
+        s.assigned_sites = []
 
     def login(s, entered_id):
         if s.guide_id == entered_id:
@@ -28,11 +28,17 @@ class Guide:
 
 # ─── Visitor Class (Meshari & Mohamed) ───────────────────────────────────────
 class Visitor:
-    def __init__(s, name, nationality):
+    def __init__(s, name, nationality, username, password):
         s.name = name
         s.nationality = nationality
-        s.booking_id = None   # assigned later by system
-        s.booked_site = None  # assigned later by system
+        s.username = username
+        s.password = password
+        s.bookings = []  # list of dicts: [{booking_id, site_name}]
+
+    def login(s, entered_username, entered_password):
+        if s.username == entered_username and s.password == entered_password:
+            return True
+        return False
 
     def register_in_system(s):
         print(f"You are now registered as {s.name} and your nationality is {s.nationality}. Welcome!")
@@ -41,9 +47,10 @@ class Visitor:
 # ─── Manager Class (Saleh & Riyadh) ──────────────────────────────────────────
 class Manager:
     def __init__(s):
-        s.sites = []         # list of site dicts
-        s.guide = {}         # guide_id → Guide object
-        s.booking_ids = set() # unique booking IDs
+        s.sites = []
+        s.guide = {}
+        s.visitors = {}       # username → Visitor object
+        s.booking_ids = set()
 
     def site_exists(s, name):
         for site in s.sites:
@@ -53,6 +60,9 @@ class Manager:
 
     def guide_exists(s, guide_id):
         return guide_id in s.guide
+
+    def visitor_exists(s, username):
+        return username in s.visitors
 
     def add_site(s, name, site_type, capacity, guide_id=None):
         site = {
@@ -77,16 +87,29 @@ class Manager:
                   f"Guide: {s.guide[site['guide_id']].name if site['guide_id'] and site['guide_id'] in s.guide else 'N/A'} | Status: {site['status']}")
 
     def view_open_sites(s):
-        # lambda requirement: filter open sites using lambda
-        return list(filter(lambda site: site["status"] == "Open", s.sites))
+        open_sites = []
+        for site in s.sites:
+            if site["status"] == "Open":
+                open_sites.append(site)
+        return open_sites
 
-    def add_new_Guide(s, name, guide_id):
-        if guide_id in s.guide:
-            print(f"Guide with ID '{guide_id}' named {s.guide[guide_id].name} already exists.")
-        else:
-            new_guide = Guide(name, guide_id)
-            s.guide[guide_id] = new_guide
-            print(f"Guide '{name}' (ID: {guide_id}) added to available guides.")
+    def add_new_Guide(s, name):
+        # Guide ID is generated randomly
+        while True:
+            guide_id = random.randint(1000, 9999)
+            if guide_id not in s.guide:
+                break
+        new_guide = Guide(name, guide_id)
+        s.guide[guide_id] = new_guide
+        print(f"Guide '{name}' added with ID: {guide_id}")
+        return guide_id
+
+    def add_new_visitor(s, name, nationality, username, password):
+        if username in s.visitors:
+            return False
+        new_visitor = Visitor(name, nationality, username, password)
+        s.visitors[username] = new_visitor
+        return True
 
     def assign_guide(s, site_name, guide_id):
         if guide_id not in s.guide:
@@ -111,7 +134,6 @@ class Manager:
     def view_summary(s):
         total_sites = len(s.sites)
         total_visitors = sum(site["visitors"] for site in s.sites)
-        # lambda requirement: used as key for max()
         most_visited = max(s.sites, key=lambda site: site["visitors"], default=None)
         print(f"Total sites: {total_sites}")
         print(f"Total registered visitors: {total_visitors}")
@@ -119,7 +141,6 @@ class Manager:
             print(f"Most visited site: {most_visited['name']} ({most_visited['visitors']} visitors)")
         else:
             print("No sites yet.")
-        print(f"Available Guides: {', '.join([f'{g.name} (ID: {g.guide_id})' for g in s.guide.values()]) if s.guide else 'None'}")
 
     def generate_booking_id(s):
         while True:
@@ -135,21 +156,28 @@ class Manager:
                     return False, "Site is closed."
                 if site["visitors"] >= site["capacity"]:
                     return False, "Site is full."
+                # check visitor not already booked this site
+                for b in visitor.bookings:
+                    if b["site_name"] == site_name:
+                        return False, "You already registered for this site."
                 site["visitors"] += 1
-                visitor.booking_id = s.generate_booking_id()
-                visitor.booked_site = site_name
-                return True, visitor.booking_id
+                booking_id = s.generate_booking_id()
+                visitor.bookings.append({"booking_id": booking_id, "site_name": site_name})
+                return True, booking_id
         return False, "Site not found."
 
-    def cancel_registration(s, booking_id, site_name):
-        if booking_id not in s.booking_ids:
-            return False, "Booking ID not found."
-        for site in s.sites:
-            if site["name"] == site_name:
-                site["visitors"] -= 1
+    def cancel_registration(s, visitor, booking_id):
+        for b in visitor.bookings:
+            if b["booking_id"] == booking_id:
+                site_name = b["site_name"]
+                for site in s.sites:
+                    if site["name"] == site_name:
+                        site["visitors"] -= 1
+                        break
                 s.booking_ids.remove(booking_id)
-                return True, "Booking cancelled."
-        return False, "Site not found."
+                visitor.bookings.remove(b)
+                return True, f"Booking {booking_id} cancelled."
+        return False, "Booking ID not found."
 
     def view_visitors_by_guide(s, guide_id):
         result = []
@@ -163,7 +191,6 @@ class Manager:
 # ║                  STREAMLIT APP (added for web UI)               ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-# ─── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="AlUla Tourism System",
     page_icon="🏛️",
@@ -171,48 +198,80 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ─── Desert dark theme CSS ────────────────────────────────────────────────────
 st.markdown("""
 <style>
 [data-testid="stAppViewContainer"] { background: #1A1208; }
-[data-testid="stSidebar"] { background: #120D05 !important; border-right: 1px solid #3A2A10; }
-[data-testid="stSidebar"] * { color: #C8A870 !important; }
+[data-testid="stSidebar"] { background: #120D05 !important; border-right: 1px solid #C8922A55; }
+[data-testid="stSidebar"] * { color: #E8D5A0 !important; }
 .main .block-container { padding-top: 2rem; }
-h1, h2, h3 { color: #E8B84B !important; }
-p, label, .stMarkdown { color: #C8A870 !important; }
-input, textarea, select { background: #2A1E0F !important; color: #C8A870 !important; border: 1px solid #3A2A10 !important; border-radius: 8px !important; }
-.stTextInput input, .stNumberInput input { background: #2A1E0F !important; color: #E8B84B !important; }
-.stButton > button { background: #C8922A !important; color: #1A1208 !important; border: none !important; border-radius: 8px !important; font-weight: 600 !important; padding: 0.5rem 1.2rem !important; }
-.stButton > button:hover { background: #E8B84B !important; }
-.stSelectbox > div > div { background: #2A1E0F !important; color: #C8A870 !important; border: 1px solid #3A2A10 !important; }
-[data-testid="metric-container"] { background: #2A1E0F !important; border: 1px solid #3A2A10 !important; border-radius: 10px !important; padding: 1rem !important; }
-[data-testid="stMetricValue"] { color: #E8B84B !important; }
-[data-testid="stMetricLabel"] { color: #7A6A4A !important; }
-hr { border-color: #3A2A10 !important; }
-.alula-card { background: #2A1E0F; border: 1px solid #3A2A10; border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: 12px; }
-.alula-card h4 { color: #E8B84B !important; margin: 0 0 4px; font-size: 15px; }
-.alula-card p { color: #7A6A4A !important; margin: 0; font-size: 12px; }
-.receipt-box { background: #0F0A05; border: 1px solid #C8922A; border-radius: 12px; padding: 1.5rem; max-width: 400px; }
-.receipt-box h3 { color: #E8B84B !important; text-align: center; margin-bottom: 1rem; }
-.receipt-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #2A1E0F; }
-.receipt-label { color: #7A6A4A !important; font-size: 13px; }
-.receipt-value { color: #C8A870 !important; font-size: 13px; font-weight: 500; }
+
+h1, h2, h3, h4 { color: #E8B84B !important; font-weight: 600 !important; }
+p, div, span, label { color: #E8D5A0 !important; }
+.stMarkdown p { color: #E8D5A0 !important; }
+
+input { background: #2A1E0F !important; color: #FFE8A0 !important; border: 1px solid #C8922A88 !important; border-radius: 8px !important; }
+.stTextInput input, .stNumberInput input { background: #2A1E0F !important; color: #FFE8A0 !important; }
+.stTextInput label, .stNumberInput label, .stSelectbox label { color: #E8B84B !important; font-weight: 500 !important; }
+
+.stButton > button { background: #C8922A !important; color: #1A1208 !important; border: none !important; border-radius: 8px !important; font-weight: 700 !important; font-size: 14px !important; padding: 0.5rem 1.4rem !important; }
+.stButton > button:hover { background: #E8B84B !important; color: #1A1208 !important; }
+
+.stSelectbox > div > div { background: #2A1E0F !important; color: #FFE8A0 !important; border: 1px solid #C8922A88 !important; }
+.stTabs [data-baseweb="tab"] { color: #C8A870 !important; font-weight: 500 !important; }
+.stTabs [aria-selected="true"] { color: #E8B84B !important; border-bottom: 2px solid #E8B84B !important; }
+.stTabs [data-baseweb="tab-list"] { background: #120D05 !important; border-bottom: 1px solid #3A2A10 !important; }
+
+[data-testid="metric-container"] { background: #2A1E0F !important; border: 1px solid #C8922A55 !important; border-radius: 10px !important; padding: 1rem !important; }
+[data-testid="stMetricValue"] { color: #E8B84B !important; font-size: 28px !important; }
+[data-testid="stMetricLabel"] { color: #C8A870 !important; font-size: 13px !important; }
+
+.stSuccess > div { background: #0F4A2A !important; border: 1px solid #4EC9BB !important; color: #A0FFD0 !important; font-weight: 500 !important; border-radius: 8px !important; }
+.stError > div { background: #4A0F0F !important; border: 1px solid #F09595 !important; color: #FFB0B0 !important; font-weight: 500 !important; border-radius: 8px !important; }
+.stWarning > div { background: #3A2A00 !important; border: 1px solid #E8B84B !important; color: #FFE8A0 !important; font-weight: 500 !important; border-radius: 8px !important; }
+.stInfo > div { background: #0F2A4A !important; border: 1px solid #7AB8E8 !important; color: #B0D8FF !important; font-weight: 500 !important; border-radius: 8px !important; }
+
+hr { border-color: #C8922A55 !important; }
+
+.alula-card { background: #2A1E0F; border: 1px solid #C8922A55; border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: 12px; }
+.alula-card h4 { color: #E8B84B !important; margin: 0 0 6px; font-size: 16px; }
+.alula-card p { color: #C8A870 !important; margin: 0; font-size: 13px; }
+
+.role-card {
+    background: #2A1E0F; border: 2px solid #C8922A55;
+    border-radius: 16px; padding: 2rem 1.5rem; text-align: center;
+    cursor: pointer; transition: border 0.2s;
+}
+.role-card:hover { border-color: #E8B84B; }
+.role-card h3 { color: #E8B84B !important; margin: 0.5rem 0; font-size: 20px; }
+.role-card p { color: #C8A870 !important; font-size: 13px; margin: 0; }
+.role-icon { font-size: 40px; margin-bottom: 8px; }
+
+.receipt-box { background: #0F0A05; border: 2px solid #C8922A; border-radius: 12px; padding: 1.8rem; max-width: 420px; }
+.receipt-box h3 { color: #E8B84B !important; text-align: center; margin-bottom: 1.2rem; font-size: 18px; }
+.receipt-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2A1E0F; }
+.receipt-label { color: #9A8B72 !important; font-size: 13px; }
+.receipt-value { color: #E8D5A0 !important; font-size: 13px; font-weight: 600; }
+.receipt-id { color: #E8B84B !important; font-size: 20px !important; font-weight: 700 !important; }
+
+.booking-row { background: #2A1E0F; border: 1px solid #C8922A55; border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.booking-site { color: #E8B84B !important; font-weight: 600; font-size: 14px; }
+.booking-id { color: #C8A870 !important; font-size: 12px; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Session state — keeps data alive between Streamlit reruns ────────────────
+# ─── Session state ────────────────────────────────────────────────────────────
 if "manager" not in st.session_state:
     st.session_state.manager = Manager()
 if "role" not in st.session_state:
     st.session_state.role = None
 if "logged_in_guide" not in st.session_state:
     st.session_state.logged_in_guide = None
-if "current_visitor" not in st.session_state:
-    st.session_state.current_visitor = None
+if "logged_in_visitor" not in st.session_state:
+    st.session_state.logged_in_visitor = None
 
 manager = st.session_state.manager
 
-# ─── Sidebar navigation ───────────────────────────────────────────────────────
+# ─── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 🏛️ AlUla Tourism")
     st.markdown("---")
@@ -221,6 +280,7 @@ with st.sidebar:
         st.markdown("### Select your role")
         if st.button("🏢  Manager", use_container_width=True):
             st.session_state.role = "manager"
+            st.session_state.manager_page = "summary"
             st.rerun()
         if st.button("🧭  Guide", use_container_width=True):
             st.session_state.role = "guide"
@@ -255,40 +315,47 @@ with st.sidebar:
                     st.rerun()
 
         elif st.session_state.role == "visitor":
-            if st.session_state.current_visitor:
-                st.markdown(f"**{st.session_state.current_visitor.name}**")
+            if st.session_state.logged_in_visitor:
+                st.markdown(f"**{st.session_state.logged_in_visitor.name}**")
                 st.markdown("---")
                 if st.button("🔍  Browse sites", use_container_width=True):
                     st.session_state.visitor_page = "browse"
                     st.rerun()
-                if st.button("🎟️  My booking", use_container_width=True):
-                    st.session_state.visitor_page = "booking"
-                    st.rerun()
-                if st.button("❌  Cancel booking", use_container_width=True):
-                    st.session_state.visitor_page = "cancel"
+                if st.button("🎟️  My bookings", use_container_width=True):
+                    st.session_state.visitor_page = "bookings"
                     st.rerun()
 
         st.markdown("---")
         if st.button("🔙  Back to home", use_container_width=True):
             st.session_state.role = None
             st.session_state.logged_in_guide = None
-            st.session_state.current_visitor = None
+            st.session_state.logged_in_visitor = None
             st.rerun()
 
-# ─── Home page ────────────────────────────────────────────────────────────────
+# ─── Home ─────────────────────────────────────────────────────────────────────
 if st.session_state.role is None:
     st.markdown("# 🏛️ AlUla Tourism System")
-    st.markdown("##### Welcome — select your role from the sidebar to get started")
+    st.markdown("##### Welcome — select your role to get started")
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown('<div class="alula-card"><h4>🏢 Manager</h4><p>Manage sites, assign guides, view system summary and close sites.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="role-card"><div class="role-icon">🏢</div><h3>Manager</h3><p>Manage sites, assign guides and view system summary</p></div>', unsafe_allow_html=True)
+        if st.button("Enter as Manager", use_container_width=True, key="home_manager"):
+            st.session_state.role = "manager"
+            st.session_state.manager_page = "summary"
+            st.rerun()
     with col2:
-        st.markdown('<div class="alula-card"><h4>🧭 Guide</h4><p>Login with your ID to view your assigned sites and registered visitors.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="role-card"><div class="role-icon">🧭</div><h3>Guide</h3><p>Login to view your assigned sites and visitors</p></div>', unsafe_allow_html=True)
+        if st.button("Enter as Guide", use_container_width=True, key="home_guide"):
+            st.session_state.role = "guide"
+            st.rerun()
     with col3:
-        st.markdown('<div class="alula-card"><h4>🎟️ Visitor</h4><p>Browse open sites, register for a visit and get your booking confirmation.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="role-card"><div class="role-icon">🎟️</div><h3>Visitor</h3><p>Browse open sites and register for a visit</p></div>', unsafe_allow_html=True)
+        if st.button("Enter as Visitor", use_container_width=True, key="home_visitor"):
+            st.session_state.role = "visitor"
+            st.rerun()
 
-# ─── Manager pages ────────────────────────────────────────────────────────────
+# ─── Manager ──────────────────────────────────────────────────────────────────
 elif st.session_state.role == "manager":
     if "manager_page" not in st.session_state:
         st.session_state.manager_page = "summary"
@@ -307,7 +374,7 @@ elif st.session_state.role == "manager":
         st.markdown("#### Available guides")
         if manager.guide:
             for g in manager.guide.values():
-                st.markdown(f"- **{g.name}** (ID: `{g.guide_id}`) — {len(g.assigned_sites)} site(s)")
+                st.markdown(f"- **{g.name}** — ID: `{g.guide_id}` — {len(g.assigned_sites)} site(s)")
         else:
             st.info("No guides added yet.")
 
@@ -322,7 +389,7 @@ elif st.session_state.role == "manager":
                 for site in manager.sites:
                     guide_name = manager.guide[site["guide_id"]].name if site["guide_id"] and site["guide_id"] in manager.guide else "N/A"
                     badge = "🟢 Open" if site["status"] == "Open" else "🔴 Closed"
-                    st.markdown(f'<div class="alula-card"><h4>{site["name"]} &nbsp; <small>{badge}</small></h4><p>Type: {site["type"]} &nbsp;|&nbsp; Visitors: {site["visitors"]}/{site["capacity"]} &nbsp;|&nbsp; Guide: {guide_name}</p></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="alula-card"><h4>{site["name"]} &nbsp; {badge}</h4><p>Type: {site["type"]} &nbsp;|&nbsp; Visitors: {site["visitors"]}/{site["capacity"]} &nbsp;|&nbsp; Guide: {guide_name}</p></div>', unsafe_allow_html=True)
 
         with tab2:
             st.markdown("#### Add a new site")
@@ -334,17 +401,17 @@ elif st.session_state.role == "manager":
                 capacity = st.number_input("Max capacity", min_value=1, value=50)
                 guide_options = ["None"] + [f"{g.name} (ID: {gid})" for gid, g in manager.guide.items()]
                 guide_choice = st.selectbox("Assign guide (optional)", guide_options)
-            if st.button("Add site"):
+            if st.button("✅ Add site"):
                 if not site_name:
-                    st.error("Please enter a site name.")
+                    st.error("❌ Please enter a site name.")
                 elif manager.site_exists(site_name):
-                    st.error(f"Site '{site_name}' already exists.")
+                    st.error(f"❌ Site '{site_name}' already exists.")
                 else:
                     guide_id = None
                     if guide_choice != "None":
                         guide_id = int(guide_choice.split("ID: ")[1].replace(")", ""))
                     manager.add_site(site_name, site_type, capacity, guide_id)
-                    st.success(f"Site '{site_name}' added successfully!")
+                    st.success(f"✅ Site '{site_name}' added successfully!")
                     st.rerun()
 
         with tab3:
@@ -353,11 +420,11 @@ elif st.session_state.role == "manager":
                 st.markdown("#### Assign a guide")
                 if manager.sites and manager.guide:
                     sel_site = st.selectbox("Select site", [s["name"] for s in manager.sites], key="assign_site")
-                    sel_guide = st.selectbox("Select guide", [f"{g.name} (ID: {gid})" for gid, g in manager.guide.items()], key="assign_guide")
-                    if st.button("Assign guide"):
+                    sel_guide = st.selectbox("Select guide", [f"{g.name} (ID: {gid})" for gid, g in manager.guide.items()], key="assign_guide_sel")
+                    if st.button("✅ Assign guide"):
                         guide_id = int(sel_guide.split("ID: ")[1].replace(")", ""))
                         manager.assign_guide(sel_site, guide_id)
-                        st.success(f"Guide assigned to '{sel_site}'!")
+                        st.success(f"✅ Guide '{manager.guide[guide_id].name}' assigned to '{sel_site}'!")
                         st.rerun()
                 else:
                     st.info("Need at least one site and one guide.")
@@ -366,9 +433,9 @@ elif st.session_state.role == "manager":
                 open_sites = [s["name"] for s in manager.sites if s["status"] == "Open"]
                 if open_sites:
                     sel_close = st.selectbox("Select site to close", open_sites, key="close_site")
-                    if st.button("Close site"):
+                    if st.button("🔴 Close site"):
                         manager.close_site(sel_close)
-                        st.success(f"'{sel_close}' is now closed.")
+                        st.success(f"✅ Site '{sel_close}' is now closed.")
                         st.rerun()
                 else:
                     st.info("No open sites to close.")
@@ -382,31 +449,25 @@ elif st.session_state.role == "manager":
             else:
                 for gid, g in manager.guide.items():
                     sites_str = ", ".join(g.assigned_sites) if g.assigned_sites else "None"
-                    st.markdown(f'<div class="alula-card"><h4>{g.name} &nbsp; <small style="color:#7A6A4A">ID: {gid}</small></h4><p>Assigned sites: {sites_str}</p></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="alula-card"><h4>{g.name} &nbsp; <small style="color:#C8A870">ID: {gid}</small></h4><p>Assigned sites: {sites_str}</p></div>', unsafe_allow_html=True)
         with tab2:
             st.markdown("#### Add a new guide")
-            col1, col2 = st.columns(2)
-            with col1:
-                guide_name = st.text_input("Guide name")
-            with col2:
-                guide_id = st.number_input("Guide ID", min_value=1000, max_value=99999, value=1000)
-            if st.button("Add guide"):
+            st.info("ℹ️ Guide ID will be generated automatically.")
+            guide_name = st.text_input("Guide name")
+            if st.button("✅ Add guide"):
                 if not guide_name:
-                    st.error("Please enter a guide name.")
-                elif manager.guide_exists(int(guide_id)):
-                    st.error(f"Guide with ID {guide_id} already exists.")
+                    st.error("❌ Please enter a guide name.")
                 else:
-                    manager.add_new_Guide(guide_name, int(guide_id))
-                    st.success(f"Guide '{guide_name}' added with ID {guide_id}!")
+                    new_id = manager.add_new_Guide(guide_name)
+                    st.success(f"✅ Guide '{guide_name}' added with ID: `{new_id}`")
                     st.rerun()
 
-# ─── Guide pages ──────────────────────────────────────────────────────────────
+# ─── Guide ────────────────────────────────────────────────────────────────────
 elif st.session_state.role == "guide":
     if not st.session_state.logged_in_guide:
         st.markdown("# 🧭 Guide Login")
-        st.markdown("Enter your guide ID to continue.")
-        guide_id_input = st.number_input("Guide ID", min_value=1000, max_value=99999, value=1000)
-        if st.button("Login"):
+        guide_id_input = st.number_input("Guide ID", min_value=1000, max_value=9999, value=1000)
+        if st.button("🔐 Login"):
             found = None
             for g in manager.guide.values():
                 if g.login(int(guide_id_input)):
@@ -415,26 +476,28 @@ elif st.session_state.role == "guide":
             if found:
                 st.session_state.logged_in_guide = found
                 st.session_state.guide_page = "sites"
+                st.success(f"✅ Welcome, {found.name}!")
                 st.rerun()
             else:
-                st.error("Guide ID not found. Please try again.")
+                st.error("❌ Guide ID not found.")
     else:
         guide = st.session_state.logged_in_guide
         if "guide_page" not in st.session_state:
             st.session_state.guide_page = "sites"
 
         if st.session_state.guide_page == "sites":
-            st.markdown("# 🗺️ My assigned sites")
+            st.markdown(f"# 🗺️ My assigned sites")
             if not guide.assigned_sites:
                 st.info("You are not assigned to any sites yet.")
             else:
                 for site_name in guide.assigned_sites:
                     for site in manager.sites:
                         if site["name"] == site_name:
-                            st.markdown(f'<div class="alula-card"><h4>{site["name"]}</h4><p>Type: {site["type"]} &nbsp;|&nbsp; Visitors: {site["visitors"]}/{site["capacity"]} &nbsp;|&nbsp; Status: {site["status"]}</p></div>', unsafe_allow_html=True)
+                            badge = "🟢 Open" if site["status"] == "Open" else "🔴 Closed"
+                            st.markdown(f'<div class="alula-card"><h4>{site["name"]} &nbsp; {badge}</h4><p>Type: {site["type"]} &nbsp;|&nbsp; Visitors: {site["visitors"]}/{site["capacity"]}</p></div>', unsafe_allow_html=True)
 
         elif st.session_state.guide_page == "visitors":
-            st.markdown("# 👥 My visitors")
+            st.markdown(f"# 👥 My visitors")
             results = manager.view_visitors_by_guide(guide.guide_id)
             if not results:
                 st.info("No visitors registered for your sites.")
@@ -442,25 +505,50 @@ elif st.session_state.role == "guide":
                 for r in results:
                     st.markdown(f'<div class="alula-card"><h4>{r["site"]}</h4><p>Registered visitors: {r["visitors"]}</p></div>', unsafe_allow_html=True)
 
-# ─── Visitor pages ────────────────────────────────────────────────────────────
+# ─── Visitor ──────────────────────────────────────────────────────────────────
 elif st.session_state.role == "visitor":
-    if not st.session_state.current_visitor:
-        st.markdown("# 🎟️ Visitor Registration")
-        st.markdown("Enter your details to get started.")
-        col1, col2 = st.columns(2)
-        with col1:
-            v_name = st.text_input("Your name")
-        with col2:
-            v_nationality = st.text_input("Your nationality")
-        if st.button("Continue"):
-            if not v_name or not v_nationality:
-                st.error("Please fill in all fields.")
-            else:
-                st.session_state.current_visitor = Visitor(v_name, v_nationality)
-                st.session_state.visitor_page = "browse"
-                st.rerun()
+    if not st.session_state.logged_in_visitor:
+        st.markdown("# 🎟️ Visitor")
+        tab1, tab2 = st.tabs(["Login", "Create account"])
+
+        with tab1:
+            st.markdown("#### Login to your account")
+            username = st.text_input("Username", key="login_username")
+            password = st.text_input("Password", type="password", key="login_password")
+            if st.button("🔐 Login"):
+                if not username or not password:
+                    st.error("❌ Please fill in all fields.")
+                elif not manager.visitor_exists(username):
+                    st.error("❌ Username not found. Please create an account.")
+                else:
+                    visitor = manager.visitors[username]
+                    if visitor.login(username, password):
+                        st.session_state.logged_in_visitor = visitor
+                        st.session_state.visitor_page = "browse"
+                        st.success(f"✅ Welcome back, {visitor.name}!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Incorrect password.")
+
+        with tab2:
+            st.markdown("#### Create a new account")
+            col1, col2 = st.columns(2)
+            with col1:
+                new_name = st.text_input("Full name", key="reg_name")
+                new_username = st.text_input("Username", key="reg_username")
+            with col2:
+                new_nationality = st.text_input("Nationality", key="reg_nationality")
+                new_password = st.text_input("Password", type="password", key="reg_password")
+            if st.button("✅ Create account"):
+                if not new_name or not new_username or not new_nationality or not new_password:
+                    st.error("❌ Please fill in all fields.")
+                elif manager.visitor_exists(new_username):
+                    st.error(f"❌ Username '{new_username}' is already taken.")
+                else:
+                    manager.add_new_visitor(new_name, new_nationality, new_username, new_password)
+                    st.success(f"✅ Account created! Welcome, {new_name}! You can now login.")
     else:
-        visitor = st.session_state.current_visitor
+        visitor = st.session_state.logged_in_visitor
         if "visitor_page" not in st.session_state:
             st.session_state.visitor_page = "browse"
 
@@ -476,49 +564,43 @@ elif st.session_state.role == "visitor":
                     with col1:
                         st.markdown(f'<div class="alula-card"><h4>{site["name"]}</h4><p>Type: {site["type"]} &nbsp;|&nbsp; Guide: {guide_name} &nbsp;|&nbsp; Visitors: {site["visitors"]}/{site["capacity"]}</p></div>', unsafe_allow_html=True)
                     with col2:
-                        st.markdown("<div style='padding-top:12px'>", unsafe_allow_html=True)
+                        st.markdown("<div style='padding-top:14px'>", unsafe_allow_html=True)
                         if st.button("Register", key=f"reg_{site['name']}"):
-                            if visitor.booked_site:
-                                st.error("You already have an active booking.")
+                            success, result = manager.register_visitor(visitor, site["name"])
+                            if success:
+                                st.success(f"✅ Registered! Booking ID: `{result}`")
+                                st.rerun()
                             else:
-                                success, result = manager.register_visitor(visitor, site["name"])
-                                if success:
-                                    st.session_state.visitor_page = "booking"
-                                    st.rerun()
-                                else:
-                                    st.error(result)
+                                st.error(f"❌ {result}")
                         st.markdown("</div>", unsafe_allow_html=True)
 
-        elif st.session_state.visitor_page == "booking":
-            st.markdown("# 🎟️ My booking")
-            if visitor.booking_id is None:
-                st.info("You have no active booking. Browse sites to register.")
+        elif st.session_state.visitor_page == "bookings":
+            st.markdown("# 🎟️ My bookings")
+            if not visitor.bookings:
+                st.info("You have no active bookings.")
             else:
-                st.markdown(f"""
-                <div class="receipt-box">
-                    <h3>Booking Confirmation</h3>
-                    <div class="receipt-row"><span class="receipt-label">Name</span><span class="receipt-value">{visitor.name}</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Nationality</span><span class="receipt-value">{visitor.nationality}</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Site</span><span class="receipt-value">{visitor.booked_site}</span></div>
-                    <div class="receipt-row"><span class="receipt-label">Booking ID</span><span class="receipt-value" style="color:#E8B84B; font-size:16px; font-weight:600;">{visitor.booking_id}</span></div>
-                </div>
-                <p style="margin-top:12px; font-size:12px; color:#5A4A2A !important;">Save your Booking ID to cancel later.</p>
-                """, unsafe_allow_html=True)
-
-        elif st.session_state.visitor_page == "cancel":
-            st.markdown("# ❌ Cancel booking")
-            if visitor.booking_id is None:
-                st.info("You have no active booking to cancel.")
-            else:
-                st.markdown(f"Your current booking: **{visitor.booked_site}** (ID: `{visitor.booking_id}`)")
-                st.warning("This action cannot be undone.")
-                if st.button("Confirm cancellation"):
-                    success, msg = manager.cancel_registration(visitor.booking_id, visitor.booked_site)
-                    if success:
-                        visitor.booking_id = None
-                        visitor.booked_site = None
-                        st.success("Booking cancelled successfully!")
-                        st.session_state.visitor_page = "browse"
-                        st.rerun()
-                    else:
-                        st.error(msg)
+                for b in visitor.bookings:
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"""
+                        <div class="receipt-box" style="max-width:100%; padding:1rem;">
+                            <div class="receipt-row">
+                                <span class="receipt-label">Site</span>
+                                <span class="receipt-value">{b['site_name']}</span>
+                            </div>
+                            <div class="receipt-row">
+                                <span class="receipt-label">Booking ID</span>
+                                <span class="receipt-id">{b['booking_id']}</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with col2:
+                        st.markdown("<div style='padding-top:14px'>", unsafe_allow_html=True)
+                        if st.button("Cancel", key=f"cancel_{b['booking_id']}"):
+                            success, msg = manager.cancel_registration(visitor, b["booking_id"])
+                            if success:
+                                st.success(f"✅ {msg}")
+                                st.rerun()
+                            else:
+                                st.error(f"❌ {msg}")
+                        st.markdown("</div>", unsafe_allow_html=True)
