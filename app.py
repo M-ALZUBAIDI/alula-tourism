@@ -12,12 +12,12 @@ class Guide:
         s.guide_id = guide_id
         s.assigned_sites = []
 
-    def login(s, entered_id):
+    def login(s, entered_id):  # checks if the entered ID belongs to this guide
         if s.guide_id == entered_id:
             return True
         return False
 
-    def view_my_assigned_site(s):
+    def view_my_assigned_site(s): # shows all sites this guide is assigned to
         if not s.assigned_sites:
             print("You are not currently assigned to any site.")
         else:
@@ -42,12 +42,13 @@ class Visitor:
 
 # ─── Manager Class (Saleh & Riyadh) ──────────────────────────────────────────
 class Manager:
+# Initializes lists for sites, guides dictionary, and unique booking IDs.
     def __init__(s):
         s.sites = []
         s.guide = {}
         s.visitors = {}       # username → Visitor object
         s.booking_ids = set()
-
+ # Creates a new site dictionary and links it to a guide if provided.
     def add_site(s, name, site_type, capacity, guide_id=None):
         site = {
             "name": name,
@@ -61,7 +62,7 @@ class Manager:
         s.sites.append(site)
         if guide_id:
             s.guide[guide_id].assigned_sites.append(name)
-
+ # Loops through and prints full details and status of all registered sites.
     def view_all_sites(s):
         if not s.sites:
             print("No sites available.")
@@ -70,14 +71,14 @@ class Manager:
             print(f"Name: {site['name']} | Type: {site['type']} | "
                   f"Visitors: {site['visitors']} | Capacity: {site['capacity']} | "
                   f"Guide: {s.guide[site['guide_id']].name if site['guide_id'] and site['guide_id'] in s.guide else 'N/A'} | Status: {site['status']}")
-
+# Filters and returns a list of all sites that currently have an "Open" status.
     def view_open_sites(s):
         open_sites = []
         for site in s.sites:
             if site["status"] == "Open":
                 open_sites.append(site)
         return open_sites
-
+# Finds the specified site by name and changes its status to "Closed".
     def close_site(s, site_name):
         for site in s.sites:
             if site["name"] == site_name:
@@ -85,7 +86,7 @@ class Manager:
                 print(f"Site '{site_name}' is now closed.")
                 return
         print(f"Site '{site_name}' not found.")
-
+# Finds the specified site by name and changes its status back to "Open".
     def reopen_site(s, site_name):
         for site in s.sites:
             if site["name"] == site_name:
@@ -93,7 +94,7 @@ class Manager:
                 print(f"Site '{site_name}' is now open.")
                 return
         print(f"Site '{site_name}' not found.")
-
+ # Calculates and displays total sites, overall visitors, and the most visited site.
     def view_summary(s):
         total_sites = len(s.sites)
         total_visitors = sum(site["visitors"] for site in s.sites)
@@ -115,7 +116,7 @@ class Manager:
 
     # -------------------------- Guide Methods -----------------------------
 
-    def add_new_Guide(s, name):
+    def add_new_Guide(s, name): # creates a guide with a unique random ID and stores it
         while True:
             guide_id = random.randint(1000, 9999)
             if guide_id not in s.guide:
@@ -124,8 +125,8 @@ class Manager:
         s.guide[guide_id] = new_guide
         print(f"Guide '{name}' added with ID: {guide_id}")
         return guide_id
-        
-    def assign_guide(s, site_name, guide_id):
+
+    def assign_guide(s, site_name, guide_id): # links an existing guide to a site (updates both sides)
         if guide_id not in s.guide:
             print(f"Guide with ID '{guide_id}' is not registered.")
             return
@@ -137,7 +138,7 @@ class Manager:
                 return
         print(f"Site '{site_name}' not found.")
 
-    def view_visitors_by_guide(s, guide_id):
+    def view_visitors_by_guide(s, guide_id): # collects each of the guide's sites with its visitor names
         result = []
         for site in s.sites:
             if site["guide_id"] == guide_id:
@@ -145,20 +146,20 @@ class Manager:
         return result
 
  # ---------- Helper Methods ----------
-    
+
     def guide_exists(s, guide_id):
         return guide_id in s.guide
-    
+
 
 # -------------------------- visitor Methods -----------------------------
-
+    # Adds a new visitor to the system if the username is unique.
     def add_new_visitor(s, name, nationality, username, password):
         if username in s.visitors:
             return False
         new_visitor = Visitor(name, nationality, username, password)
         s.visitors[username] = new_visitor
         return True
-
+    # Book a capacity-available, open site for a visitor who hasn't registered yet.
     def register_visitor(s, visitor, site_name):
         for site in s.sites:
             if site["name"] == site_name:
@@ -175,7 +176,7 @@ class Manager:
                 visitor.bookings.append({"booking_id": booking_id, "site_name": site_name})
                 return True, booking_id
         return False, "Site not found."
-
+   # Cancel an active booking, free up site space, and remove records.
     def cancel_registration(s, visitor, booking_id):
         for b in visitor.bookings:
             if b["booking_id"] == booking_id:
@@ -192,16 +193,57 @@ class Manager:
         return False, "Booking ID not found."
 
  # ---------- Helper Methods ----------
-
+    # Check if a specific username already exists in the system.
     def visitor_exists(s, username):
         return username in s.visitors
-
+    # Generate a unique 4-digit booking ID not currently in use.
     def generate_booking_id(s):
         while True:
             booking_id = random.randint(1000, 9999)
             if booking_id not in s.booking_ids:
                 s.booking_ids.add(booking_id)
                 return booking_id
+
+
+   # ------------------------------ Reflection ------------------------------
+
+#==================== Riyad ahmed ====================
+
+#1.Most Challenging Part:
+#Tracing and reading the code because it was constantly changing,
+#so I had to go back and re-read everything from the beginning many times.
+
+#2.Most Enjoyable Concept:
+#Relying on OOP concepts. The project idea became very easy because we divided
+#it into three clear classes: Manager, Guide, and Visitor, which made everything simple.
+
+#3.Improvements for More Time:
+#I would expand the application's scope to support managing small festivals and
+#local events, adding features like ticket pricing and event scheduling.
+#====================================================
+   #--------------------------------------------
+  #  Meshari
+  # Q1)Managing data consistency across nested data structures.
+  # Q2)Efficient uniqueness check in the ID generator.
+  # Q3)Improve UX-UI
+
+    #--------------------------------------------
+  #  Mohammed alzubaidi
+  # Q1) The trickiest part is the relationship between guides and sites : (one guide can have many sites ) but (each site has only one guide) so "assigned_sites" is a list inside the Guide and "guide_id" is stores in the site
+  # Q2) I liked using two concepts and how it  work together "random" creates the number, the "set" checks uniqueness
+  # Q3) a lot of things like add "Guide passwords" and "Guide editing"
+
+    #--------------------------------------------
+  #  Mohammed Alhejaili
+  # Q1)The most challenging part was getting the booking checks in order: that the site is open, then has space, then that the visitor hasn't already registered. I solved it with sequential if statements and an early return that stops the code at the first condition that fails.
+  # Q2)The concept I enjoyed the most was using dictionaries and objects together, since it made organizing and looking up the data easy.
+  # Q3)If I had more time, I would improve how the program searches for sites,and save the data to a file.
+
+      #--------------------------------------------
+  #  saleh
+  # Q1)# Use while True in methods.
+  # Q2)Connect classes and methods.
+  # Q3)Add all Saudi tourist cities to the code.
 
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║                  STREAMLIT APP (added for web UI)               ║
