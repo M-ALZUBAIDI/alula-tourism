@@ -40,10 +40,6 @@ class Visitor:
             return True
         return False
 
-    def register_in_system(s):
-        print(f"You are now registered as {s.name} and your nationality is {s.nationality}. Welcome!")
-
-
 # ─── Manager Class (Saleh & Riyadh) ──────────────────────────────────────────
 class Manager:
     def __init__(s):
@@ -51,18 +47,6 @@ class Manager:
         s.guide = {}
         s.visitors = {}       # username → Visitor object
         s.booking_ids = set()
-
-    def site_exists(s, name):
-        for site in s.sites:
-            if site["name"] == name:
-                return True
-        return False
-
-    def guide_exists(s, guide_id):
-        return guide_id in s.guide
-
-    def visitor_exists(s, username):
-        return username in s.visitors
 
     def add_site(s, name, site_type, capacity, guide_id=None):
         site = {
@@ -94,35 +78,6 @@ class Manager:
                 open_sites.append(site)
         return open_sites
 
-    def add_new_Guide(s, name):
-        while True:
-            guide_id = random.randint(1000, 9999)
-            if guide_id not in s.guide:
-                break
-        new_guide = Guide(name, guide_id)
-        s.guide[guide_id] = new_guide
-        print(f"Guide '{name}' added with ID: {guide_id}")
-        return guide_id
-
-    def add_new_visitor(s, name, nationality, username, password):
-        if username in s.visitors:
-            return False
-        new_visitor = Visitor(name, nationality, username, password)
-        s.visitors[username] = new_visitor
-        return True
-
-    def assign_guide(s, site_name, guide_id):
-        if guide_id not in s.guide:
-            print(f"Guide with ID '{guide_id}' is not registered.")
-            return
-        for site in s.sites:
-            if site["name"] == site_name:
-                site["guide_id"] = guide_id
-                s.guide[guide_id].assigned_sites.append(site_name)
-                print(f"Guide '{s.guide[guide_id].name}' assigned to '{site_name}'.")
-                return
-        print(f"Site '{site_name}' not found.")
-
     def close_site(s, site_name):
         for site in s.sites:
             if site["name"] == site_name:
@@ -150,12 +105,59 @@ class Manager:
         else:
             print("No sites yet.")
 
-    def generate_booking_id(s):
+    # ---------- Helper Methods ----------
+
+    def site_exists(s, name):
+        for site in s.sites:
+            if site["name"] == name:
+                return True
+        return False
+
+    # -------------------------- Guide Methods -----------------------------
+
+    def add_new_Guide(s, name):
         while True:
-            booking_id = random.randint(1000, 9999)
-            if booking_id not in s.booking_ids:
-                s.booking_ids.add(booking_id)
-                return booking_id
+            guide_id = random.randint(1000, 9999)
+            if guide_id not in s.guide:
+                break
+        new_guide = Guide(name, guide_id)
+        s.guide[guide_id] = new_guide
+        print(f"Guide '{name}' added with ID: {guide_id}")
+        return guide_id
+        
+    def assign_guide(s, site_name, guide_id):
+        if guide_id not in s.guide:
+            print(f"Guide with ID '{guide_id}' is not registered.")
+            return
+        for site in s.sites:
+            if site["name"] == site_name:
+                site["guide_id"] = guide_id
+                s.guide[guide_id].assigned_sites.append(site_name)
+                print(f"Guide '{s.guide[guide_id].name}' assigned to '{site_name}'.")
+                return
+        print(f"Site '{site_name}' not found.")
+
+    def view_visitors_by_guide(s, guide_id):
+        result = []
+        for site in s.sites:
+            if site["guide_id"] == guide_id:
+                result.append({"site": site["name"], "names": site["visitor_names"]})
+        return result
+
+ # ---------- Helper Methods ----------
+    
+    def guide_exists(s, guide_id):
+        return guide_id in s.guide
+    
+
+# -------------------------- visitor Methods -----------------------------
+
+    def add_new_visitor(s, name, nationality, username, password):
+        if username in s.visitors:
+            return False
+        new_visitor = Visitor(name, nationality, username, password)
+        s.visitors[username] = new_visitor
+        return True
 
     def register_visitor(s, visitor, site_name):
         for site in s.sites:
@@ -189,13 +191,17 @@ class Manager:
                 return True, f"Booking {booking_id} cancelled."
         return False, "Booking ID not found."
 
-    def view_visitors_by_guide(s, guide_id):
-        result = []
-        for site in s.sites:
-            if site["guide_id"] == guide_id:
-                result.append({"site": site["name"], "names": site["visitor_names"]})
-        return result
+ # ---------- Helper Methods ----------
 
+    def visitor_exists(s, username):
+        return username in s.visitors
+
+    def generate_booking_id(s):
+        while True:
+            booking_id = random.randint(1000, 9999)
+            if booking_id not in s.booking_ids:
+                s.booking_ids.add(booking_id)
+                return booking_id
 
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║                  STREAMLIT APP (added for web UI)               ║
